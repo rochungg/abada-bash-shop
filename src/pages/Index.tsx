@@ -24,7 +24,7 @@ interface Product {
 }
 
 interface Selection {
-  [key: string]: boolean;
+  [key: string]: number; // 0, 1, or 2
 }
 
 const Index = () => {
@@ -83,32 +83,55 @@ const Index = () => {
   };
 
   const calculateTotals = () => {
-    const maleCount = Object.values(selectedMale).filter(Boolean).length;
-    const femaleCount = Object.values(selectedFemale).filter(Boolean).length;
+    // Count different days selected (not total quantity)
+    const maleDifferentDays = Object.values(selectedMale).filter(qty => qty > 0).length;
+    const femaleDifferentDays = Object.values(selectedFemale).filter(qty => qty > 0).length;
+    
+    // Count total abadás
+    const maleTotalAbadas = Object.values(selectedMale).reduce((sum, qty) => sum + qty, 0);
+    const femaleTotalAbadas = Object.values(selectedFemale).reduce((sum, qty) => sum + qty, 0);
 
     let maleTotal = 0;
     let femaleTotal = 0;
     let maleTotalWithoutDiscount = 0;
     let femaleTotalWithoutDiscount = 0;
 
-    Object.entries(selectedMale).forEach(([day, selected]) => {
-      if (selected) {
+    // Calculate male total
+    Object.entries(selectedMale).forEach(([day, quantity]) => {
+      if (quantity > 0) {
         const product = getProduct(parseInt(day), "M");
         if (product) {
-          const bracket = `price_bracket_${maleCount}` as keyof Product;
-          maleTotal += Number(product[bracket]);
-          maleTotalWithoutDiscount += Number(product.price_bracket_1);
+          const bracket = `price_bracket_${maleDifferentDays}` as keyof Product;
+          
+          if (quantity === 1) {
+            // Only one abadá: apply bracket based on different days
+            maleTotal += Number(product[bracket]);
+            maleTotalWithoutDiscount += Number(product.price_bracket_1);
+          } else if (quantity === 2) {
+            // Two abadás: first at bracket_1, second at bracket based on different days
+            maleTotal += Number(product.price_bracket_1) + Number(product[bracket]);
+            maleTotalWithoutDiscount += Number(product.price_bracket_1) * 2;
+          }
         }
       }
     });
 
-    Object.entries(selectedFemale).forEach(([day, selected]) => {
-      if (selected) {
+    // Calculate female total
+    Object.entries(selectedFemale).forEach(([day, quantity]) => {
+      if (quantity > 0) {
         const product = getProduct(parseInt(day), "F");
         if (product) {
-          const bracket = `price_bracket_${femaleCount}` as keyof Product;
-          femaleTotal += Number(product[bracket]);
-          femaleTotalWithoutDiscount += Number(product.price_bracket_1);
+          const bracket = `price_bracket_${femaleDifferentDays}` as keyof Product;
+          
+          if (quantity === 1) {
+            // Only one abadá: apply bracket based on different days
+            femaleTotal += Number(product[bracket]);
+            femaleTotalWithoutDiscount += Number(product.price_bracket_1);
+          } else if (quantity === 2) {
+            // Two abadás: first at bracket_1, second at bracket based on different days
+            femaleTotal += Number(product.price_bracket_1) + Number(product[bracket]);
+            femaleTotalWithoutDiscount += Number(product.price_bracket_1) * 2;
+          }
         }
       }
     });
@@ -118,8 +141,10 @@ const Index = () => {
     const savings = totalWithoutDiscount - total;
 
     return { 
-      maleCount, 
-      femaleCount, 
+      maleDifferentDays,
+      femaleDifferentDays,
+      maleTotalAbadas,
+      femaleTotalAbadas,
       maleTotal, 
       femaleTotal, 
       total,
@@ -130,11 +155,33 @@ const Index = () => {
 
   const totals = calculateTotals();
 
-  const handleCheckboxChange = (day: number, gender: string, checked: boolean) => {
+  const handleQuantityChange = (day: number, gender: string, action: "increment" | "decrement") => {
     if (gender === "M") {
-      setSelectedMale((prev) => ({ ...prev, [day]: checked }));
+      setSelectedMale((prev) => {
+        const currentQty = prev[day] || 0;
+        let newQty = currentQty;
+        
+        if (action === "increment" && currentQty < 2) {
+          newQty = currentQty + 1;
+        } else if (action === "decrement" && currentQty > 0) {
+          newQty = currentQty - 1;
+        }
+        
+        return { ...prev, [day]: newQty };
+      });
     } else {
-      setSelectedFemale((prev) => ({ ...prev, [day]: checked }));
+      setSelectedFemale((prev) => {
+        const currentQty = prev[day] || 0;
+        let newQty = currentQty;
+        
+        if (action === "increment" && currentQty < 2) {
+          newQty = currentQty + 1;
+        } else if (action === "decrement" && currentQty > 0) {
+          newQty = currentQty - 1;
+        }
+        
+        return { ...prev, [day]: newQty };
+      });
     }
   };
 
@@ -215,9 +262,9 @@ const Index = () => {
                 </div>
                 <h3 className="text-lg font-semibold text-foreground">Masculino</h3>
               </div>
-              {totals.maleCount > 0 && (
+              {totals.maleTotalAbadas > 0 && (
                 <Badge variant="secondary" className="text-xs">
-                  {totals.maleCount} {totals.maleCount === 1 ? "item" : "itens"}
+                  {totals.maleDifferentDays} {totals.maleDifferentDays === 1 ? "dia" : "dias"} ({totals.maleTotalAbadas} {totals.maleTotalAbadas === 1 ? "abadá" : "abadás"})
                 </Badge>
               )}
             </div>
@@ -226,42 +273,60 @@ const Index = () => {
               {[1, 2, 3, 4, 5, 6].map((day) => {
                 const product = getProduct(day, "M");
                 const isAvailable = product && product.stock > 0;
+                const quantity = selectedMale[day] || 0;
 
                 return (
                   <div
                     key={day}
                     className={`group rounded-lg border transition-all duration-200 ${
-                      selectedMale[day]
+                      quantity > 0
                         ? "border-masculine bg-masculine/5 shadow-sm"
                         : "border-border/50 hover:border-masculine/40 hover:bg-muted/30"
                     } ${!isAvailable ? "opacity-50" : ""}`}
                   >
-                    <div className="flex items-center gap-3 p-3">
-                      <Checkbox
-                        id={`male-${day}`}
-                        checked={selectedMale[day] || false}
-                        onCheckedChange={(checked) =>
-                          handleCheckboxChange(day, "M", checked as boolean)
-                        }
-                        disabled={!isAvailable}
-                      />
-                      <label
-                        htmlFor={`male-${day}`}
-                        className="cursor-pointer flex-1 min-w-0"
-                      >
-                        <div className="font-semibold text-sm truncate">
+                    <div className="flex items-center justify-between p-3">
+                      <div>
+                        <div className="font-semibold text-sm">
                           {product?.name || `Dia ${day}`}
                         </div>
                         {product?.description && (
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground">
                             {product.description}
                           </p>
                         )}
-                      </label>
-                      {!isAvailable && (
-                        <Badge variant="destructive" className="text-xs shrink-0">
-                          Esgotado
-                        </Badge>
+                        {!isAvailable && (
+                          <Badge variant="destructive" className="text-xs mt-1">
+                            Esgotado
+                          </Badge>
+                        )}
+                      </div>
+                      {isAvailable && (
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold text-masculine">
+                            R$ {product.price_bracket_1.toFixed(2)}
+                          </span>
+                          <div className="flex items-center gap-1 border rounded-md">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-masculine/10"
+                              onClick={() => handleQuantityChange(day, "M", "decrement")}
+                              disabled={quantity === 0}
+                            >
+                              -
+                            </Button>
+                            <span className="w-6 text-center font-medium">{quantity}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-masculine/10"
+                              onClick={() => handleQuantityChange(day, "M", "increment")}
+                              disabled={quantity === 2}
+                            >
+                              +
+                            </Button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -279,9 +344,9 @@ const Index = () => {
                 </div>
                 <h3 className="text-lg font-semibold text-foreground">Feminino</h3>
               </div>
-              {totals.femaleCount > 0 && (
+              {totals.femaleTotalAbadas > 0 && (
                 <Badge variant="secondary" className="text-xs">
-                  {totals.femaleCount} {totals.femaleCount === 1 ? "item" : "itens"}
+                  {totals.femaleDifferentDays} {totals.femaleDifferentDays === 1 ? "dia" : "dias"} ({totals.femaleTotalAbadas} {totals.femaleTotalAbadas === 1 ? "abadá" : "abadás"})
                 </Badge>
               )}
             </div>
@@ -290,42 +355,60 @@ const Index = () => {
               {[1, 2, 3, 4, 5, 6].map((day) => {
                 const product = getProduct(day, "F");
                 const isAvailable = product && product.stock > 0;
+                const quantity = selectedFemale[day] || 0;
 
                 return (
                   <div
                     key={day}
                     className={`group rounded-lg border transition-all duration-200 ${
-                      selectedFemale[day]
+                      quantity > 0
                         ? "border-feminine bg-feminine/5 shadow-sm"
                         : "border-border/50 hover:border-feminine/40 hover:bg-muted/30"
                     } ${!isAvailable ? "opacity-50" : ""}`}
                   >
-                    <div className="flex items-center gap-3 p-3">
-                      <Checkbox
-                        id={`female-${day}`}
-                        checked={selectedFemale[day] || false}
-                        onCheckedChange={(checked) =>
-                          handleCheckboxChange(day, "F", checked as boolean)
-                        }
-                        disabled={!isAvailable}
-                      />
-                      <label
-                        htmlFor={`female-${day}`}
-                        className="cursor-pointer flex-1 min-w-0"
-                      >
-                        <div className="font-semibold text-sm truncate">
+                    <div className="flex items-center justify-between p-3">
+                      <div>
+                        <div className="font-semibold text-sm">
                           {product?.name || `Dia ${day}`}
                         </div>
                         {product?.description && (
-                          <p className="text-xs text-muted-foreground truncate">
+                          <p className="text-xs text-muted-foreground">
                             {product.description}
                           </p>
                         )}
-                      </label>
-                      {!isAvailable && (
-                        <Badge variant="destructive" className="text-xs shrink-0">
-                          Esgotado
-                        </Badge>
+                        {!isAvailable && (
+                          <Badge variant="destructive" className="text-xs mt-1">
+                            Esgotado
+                          </Badge>
+                        )}
+                      </div>
+                      {isAvailable && (
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold text-feminine">
+                            R$ {product.price_bracket_1.toFixed(2)}
+                          </span>
+                          <div className="flex items-center gap-1 border rounded-md">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-feminine/10"
+                              onClick={() => handleQuantityChange(day, "F", "decrement")}
+                              disabled={quantity === 0}
+                            >
+                              -
+                            </Button>
+                            <span className="w-6 text-center font-medium">{quantity}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 hover:bg-feminine/10"
+                              onClick={() => handleQuantityChange(day, "F", "increment")}
+                              disabled={quantity === 2}
+                            >
+                              +
+                            </Button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -352,20 +435,20 @@ const Index = () => {
               <div className="space-y-5">
                 {/* Resumo compacto */}
                 <div className="space-y-3">
-                  {totals.maleCount > 0 && (
+                  {totals.maleTotalAbadas > 0 && (
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">
-                        {totals.maleCount} {totals.maleCount === 1 ? 'abadá' : 'abadás'} masculino
+                        {totals.maleDifferentDays} {totals.maleDifferentDays === 1 ? 'dia' : 'dias'} masculino ({totals.maleTotalAbadas} {totals.maleTotalAbadas === 1 ? 'abadá' : 'abadás'})
                       </span>
                       <span className="font-semibold text-foreground">
                         R$ {totals.maleTotal.toFixed(2)}
                       </span>
                     </div>
                   )}
-                  {totals.femaleCount > 0 && (
+                  {totals.femaleTotalAbadas > 0 && (
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-muted-foreground">
-                        {totals.femaleCount} {totals.femaleCount === 1 ? 'abadá' : 'abadás'} feminino
+                        {totals.femaleDifferentDays} {totals.femaleDifferentDays === 1 ? 'dia' : 'dias'} feminino ({totals.femaleTotalAbadas} {totals.femaleTotalAbadas === 1 ? 'abadá' : 'abadás'})
                       </span>
                       <span className="font-semibold text-foreground">
                         R$ {totals.femaleTotal.toFixed(2)}
