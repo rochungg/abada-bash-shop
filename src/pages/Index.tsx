@@ -64,6 +64,8 @@ const Index = () => {
 
     let maleTotal = 0;
     let femaleTotal = 0;
+    let maleTotalWithoutDiscount = 0;
+    let femaleTotalWithoutDiscount = 0;
 
     Object.entries(selectedMale).forEach(([day, selected]) => {
       if (selected) {
@@ -71,6 +73,7 @@ const Index = () => {
         if (product) {
           const bracket = `price_bracket_${maleCount}` as keyof Product;
           maleTotal += Number(product[bracket]);
+          maleTotalWithoutDiscount += Number(product.price_bracket_1);
         }
       }
     });
@@ -81,11 +84,24 @@ const Index = () => {
         if (product) {
           const bracket = `price_bracket_${femaleCount}` as keyof Product;
           femaleTotal += Number(product[bracket]);
+          femaleTotalWithoutDiscount += Number(product.price_bracket_1);
         }
       }
     });
 
-    return { maleCount, femaleCount, maleTotal, femaleTotal, total: maleTotal + femaleTotal };
+    const totalWithoutDiscount = maleTotalWithoutDiscount + femaleTotalWithoutDiscount;
+    const total = maleTotal + femaleTotal;
+    const savings = totalWithoutDiscount - total;
+
+    return { 
+      maleCount, 
+      femaleCount, 
+      maleTotal, 
+      femaleTotal, 
+      total,
+      totalWithoutDiscount,
+      savings
+    };
   };
 
   const totals = calculateTotals();
@@ -206,11 +222,6 @@ const Index = () => {
                           Esgotado
                         </Badge>
                       )}
-                      {isAvailable && product && (
-                        <Badge variant="outline" className="text-xs shrink-0 border-masculine/30 text-masculine">
-                          {product.stock} unidades
-                        </Badge>
-                      )}
                     </div>
                   </div>
                 );
@@ -279,11 +290,6 @@ const Index = () => {
                           Esgotado
                         </Badge>
                       )}
-                      {isAvailable && product && (
-                        <Badge variant="outline" className="text-xs shrink-0 border-feminine/30 text-feminine">
-                          {product.stock} unidades
-                        </Badge>
-                      )}
                     </div>
                   </div>
                 );
@@ -334,8 +340,25 @@ const Index = () => {
 
               {totals.total > 0 && (
                 <>
-                  <div className="border-t pt-4">
-                    <div className="flex justify-between items-center mb-6">
+                  <div className="border-t pt-4 space-y-4">
+                    {totals.savings > 0 && (
+                      <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                        <div className="flex justify-between items-center text-sm mb-1">
+                          <span className="text-muted-foreground">Preço sem desconto:</span>
+                          <span className="text-muted-foreground line-through">
+                            R$ {totals.totalWithoutDiscount.toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="font-semibold text-accent">Você economiza:</span>
+                          <span className="font-bold text-accent">
+                            R$ {totals.savings.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex justify-between items-center">
                       <span className="text-lg font-bold">Total</span>
                       <span className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                         R$ {totals.total.toFixed(2)}
