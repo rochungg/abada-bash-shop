@@ -4,15 +4,39 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { User } from "@supabase/supabase-js";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, Save, Plus, Package, Trash2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+
+interface Batch {
+  id: string;
+  name: string;
+  description: string | null;
+  active: boolean;
+  created_at: string;
+}
 
 interface Product {
   id?: string;
+  batch_id: string | null;
   day: number;
   gender: string;
+  name: string | null;
+  description: string | null;
   stock: number;
   price_bracket_1: number;
   price_bracket_2: number;
@@ -26,8 +50,13 @@ const Admin = () => {
   const [user, setUser] = useState<User | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [batches, setBatches] = useState<Batch[]>([]);
+  const [selectedBatch, setSelectedBatch] = useState<Batch | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newBatchName, setNewBatchName] = useState("");
+  const [newBatchDescription, setNewBatchDescription] = useState("");
+  const [showNewBatch, setShowNewBatch] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -40,15 +69,38 @@ const Admin = () => {
     setUser(session?.user || null);
     
     if (session?.user) {
-      await fetchProducts();
+      await fetchBatches();
     }
     setLoading(false);
   };
 
-  const fetchProducts = async () => {
+  const fetchBatches = async () => {
+    const { data, error } = await supabase
+      .from("batches")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      toast({
+        title: "Erro ao carregar lotes",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setBatches(data || []);
+    if (data && data.length > 0 && !selectedBatch) {
+      setSelectedBatch(data[0]);
+      await fetchProducts(data[0].id);
+    }
+  };
+
+  const fetchProducts = async (batchId: string) => {
     const { data, error } = await supabase
       .from("products")
       .select("*")
+      .eq("batch_id", batchId)
       .order("day", { ascending: true });
 
     if (error) {
@@ -67,8 +119,11 @@ const Admin = () => {
         const existing = data?.find((p) => p.day === day && p.gender === gender);
         allProducts.push(
           existing || {
+            batch_id: batchId,
             day,
             gender,
+            name: null,
+            description: null,
             stock: 0,
             price_bracket_1: 0,
             price_bracket_2: 0,
@@ -141,23 +196,96 @@ const Admin = () => {
     });
   };
 
+  const createBatch = async () => {
+    if (!newBatchName.trim()) {
+      toast({
+        title: "Nome obrigatório",
+        description: "Digite um nome para o lote",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("batches")
+      .insert({
+        name: newBatchName,
+        description: newBatchDescription || null,
+        active: true,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      toast({
+        title: "Erro ao criar lote",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Lote criado com sucesso!",
+    });
+
+    setNewBatchName("");
+    setNewBatchDescription("");
+    setShowNewBatch(false);
+    await fetchBatches();
+    setSelectedBatch(data);
+    await fetchProducts(data.id);
+  };
+
+  const deleteBatch = async (batchId: string) => {
+    const { error } = await supabase
+      .from("batches")
+      .delete()
+      .eq("id", batchId);
+
+    if (error) {
+      toast({
+        title: "Erro ao excluir lote",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Lote excluído com sucesso!",
+    });
+
+    if (selectedBatch?.id === batchId) {
+      setSelectedBatch(null);
+      setProducts([]);
+    }
+
+    await fetchBatches();
+  };
+
   const updateProduct = (index: number, field: keyof Product, value: string) => {
     const updated = [...products];
     updated[index] = {
       ...updated[index],
-      [field]: field === "gender" ? value : Number(value),
+      [field]: field === "gender" || field === "name" || field === "description" ? value : Number(value),
     };
     setProducts(updated);
   };
 
   const saveProducts = async () => {
+    if (!selectedBatch) return;
+
     setLoading(true);
 
     for (const product of products) {
       const { error } = await supabase.from("products").upsert(
         {
+          batch_id: selectedBatch.id,
           day: product.day,
           gender: product.gender,
+          name: product.name || null,
+          description: product.description || null,
           stock: product.stock,
           price_bracket_1: product.price_bracket_1,
           price_bracket_2: product.price_bracket_2,
@@ -166,7 +294,7 @@ const Admin = () => {
           price_bracket_5: product.price_bracket_5,
           price_bracket_6: product.price_bracket_6,
         },
-        { onConflict: "day,gender" }
+        { onConflict: "batch_id,day,gender" }
       );
 
       if (error) {
@@ -184,7 +312,7 @@ const Admin = () => {
       title: "Produtos salvos com sucesso!",
     });
     setLoading(false);
-    await fetchProducts();
+    await fetchProducts(selectedBatch.id);
   };
 
   if (loading) {
@@ -260,7 +388,7 @@ const Admin = () => {
             <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
               <ArrowLeft className="h-4 w-4" />
             </Button>
-            <h1 className="text-2xl font-bold">Admin - Gestão de Produtos</h1>
+            <h1 className="text-2xl font-bold">Admin - Gestão de Lotes</h1>
           </div>
           <Button variant="outline" size="sm" onClick={handleLogout}>
             Sair
@@ -269,56 +397,280 @@ const Admin = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="mb-6 flex justify-end">
-          <Button onClick={saveProducts} disabled={loading} size="lg">
-            <Save className="mr-2 h-4 w-4" />
-            Salvar Todos os Produtos
-          </Button>
-        </div>
+        <div className="grid lg:grid-cols-4 gap-6">
+          {/* Sidebar - Lista de Lotes */}
+          <div className="lg:col-span-1">
+            <Card className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold flex items-center gap-2">
+                  <Package className="h-5 w-5" />
+                  Lotes
+                </h2>
+                <Button
+                  size="sm"
+                  onClick={() => setShowNewBatch(!showNewBatch)}
+                  variant={showNewBatch ? "secondary" : "default"}
+                >
+                  <Plus className="h-4 w-4" />
+                </Button>
+              </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          {products.map((product, index) => (
-            <Card key={`${product.day}-${product.gender}`} className="p-6">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <span>{product.gender === "M" ? "👔" : "👗"}</span>
-                Dia {product.day} - {product.gender === "M" ? "Masculino" : "Feminino"}
-              </h3>
-
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor={`stock-${index}`}>Estoque</Label>
-                  <Input
-                    id={`stock-${index}`}
-                    type="number"
-                    min="0"
-                    value={product.stock}
-                    onChange={(e) => updateProduct(index, "stock", e.target.value)}
-                  />
+              {showNewBatch && (
+                <div className="mb-4 p-4 border rounded-lg space-y-3">
+                  <div>
+                    <Label htmlFor="new-batch-name">Nome do Lote</Label>
+                    <Input
+                      id="new-batch-name"
+                      value={newBatchName}
+                      onChange={(e) => setNewBatchName(e.target.value)}
+                      placeholder="Ex: Carnaval 2025"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="new-batch-desc">Descrição</Label>
+                    <Textarea
+                      id="new-batch-desc"
+                      value={newBatchDescription}
+                      onChange={(e) => setNewBatchDescription(e.target.value)}
+                      placeholder="Descrição opcional"
+                      rows={2}
+                    />
+                  </div>
+                  <Button onClick={createBatch} size="sm" className="w-full">
+                    Criar Lote
+                  </Button>
                 </div>
+              )}
 
-                <div className="grid grid-cols-2 gap-3">
-                  {[1, 2, 3, 4, 5, 6].map((bracket) => (
-                    <div key={bracket}>
-                      <Label htmlFor={`price-${index}-${bracket}`}>
-                        Preço {bracket} {bracket === 1 ? "abadá" : "abadás"}
-                      </Label>
-                      <Input
-                        id={`price-${index}-${bracket}`}
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={product[`price_bracket_${bracket}` as keyof Product]}
-                        onChange={(e) =>
-                          updateProduct(index, `price_bracket_${bracket}` as keyof Product, e.target.value)
-                        }
-                        placeholder="0.00"
-                      />
+              <div className="space-y-2">
+                {batches.map((batch) => (
+                  <div
+                    key={batch.id}
+                    className={`p-3 rounded-lg border-2 transition-all cursor-pointer ${
+                      selectedBatch?.id === batch.id
+                        ? "border-primary bg-primary/5"
+                        : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <div
+                      onClick={() => {
+                        setSelectedBatch(batch);
+                        fetchProducts(batch.id);
+                      }}
+                      className="flex-1"
+                    >
+                      <div className="font-semibold">{batch.name}</div>
+                      {batch.description && (
+                        <p className="text-sm text-muted-foreground line-clamp-2">
+                          {batch.description}
+                        </p>
+                      )}
                     </div>
-                  ))}
-                </div>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="mt-2 w-full text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Excluir
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja excluir o lote "{batch.name}"? Todos os produtos associados também serão excluídos. Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteBatch(batch.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                ))}
+
+                {batches.length === 0 && !showNewBatch && (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Nenhum lote cadastrado.<br />Clique em + para criar.
+                  </p>
+                )}
               </div>
             </Card>
-          ))}
+          </div>
+
+          {/* Main Content - Produtos do Lote Selecionado */}
+          <div className="lg:col-span-3">
+            {selectedBatch ? (
+              <>
+                <div className="mb-6 flex justify-between items-center">
+                  <div>
+                    <h2 className="text-2xl font-bold">{selectedBatch.name}</h2>
+                    {selectedBatch.description && (
+                      <p className="text-muted-foreground">{selectedBatch.description}</p>
+                    )}
+                  </div>
+                  <Button onClick={saveProducts} disabled={loading} size="lg">
+                    <Save className="mr-2 h-4 w-4" />
+                    Salvar Produtos
+                  </Button>
+                </div>
+
+                <Tabs defaultValue="1" className="w-full">
+                  <TabsList className="grid w-full grid-cols-6">
+                    {[1, 2, 3, 4, 5, 6].map((day) => (
+                      <TabsTrigger key={day} value={day.toString()}>
+                        Dia {day}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+
+                  {[1, 2, 3, 4, 5, 6].map((day) => (
+                    <TabsContent key={day} value={day.toString()} className="space-y-6">
+                      {["M", "F"].map((gender) => {
+                        const index = products.findIndex(
+                          (p) => p.day === day && p.gender === gender
+                        );
+                        if (index === -1) return null;
+                        const product = products[index];
+
+                        return (
+                          <Card
+                            key={`${day}-${gender}`}
+                            className="p-6 border-2 hover:border-primary/30 transition-all"
+                          >
+                            <div className="flex items-center gap-3 mb-6 pb-4 border-b">
+                              <div
+                                className={`w-12 h-12 rounded-lg ${
+                                  gender === "M"
+                                    ? "bg-gradient-to-br from-masculine to-masculine/60"
+                                    : "bg-gradient-to-br from-feminine to-feminine/60"
+                                } flex items-center justify-center text-2xl`}
+                              >
+                                {gender === "M" ? "👔" : "👗"}
+                              </div>
+                              <div className="flex-1">
+                                <h3 className="text-xl font-bold">
+                                  {gender === "M" ? "Masculino" : "Feminino"}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                  Dia {day}
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="space-y-4">
+                              <div>
+                                <Label htmlFor={`name-${index}`}>
+                                  Nome Personalizado (opcional)
+                                </Label>
+                                <Input
+                                  id={`name-${index}`}
+                                  value={product.name || ""}
+                                  onChange={(e) =>
+                                    updateProduct(index, "name", e.target.value)
+                                  }
+                                  placeholder={`Dia ${day} - ${gender === "M" ? "Masculino" : "Feminino"}`}
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Deixe em branco para usar o nome padrão
+                                </p>
+                              </div>
+
+                              <div>
+                                <Label htmlFor={`description-${index}`}>
+                                  Descrição (opcional)
+                                </Label>
+                                <Textarea
+                                  id={`description-${index}`}
+                                  value={product.description || ""}
+                                  onChange={(e) =>
+                                    updateProduct(index, "description", e.target.value)
+                                  }
+                                  placeholder="Descrição do abadá..."
+                                  rows={2}
+                                />
+                              </div>
+
+                              <div>
+                                <Label htmlFor={`stock-${index}`}>Estoque</Label>
+                                <Input
+                                  id={`stock-${index}`}
+                                  type="number"
+                                  min="0"
+                                  value={product.stock}
+                                  onChange={(e) =>
+                                    updateProduct(index, "stock", e.target.value)
+                                  }
+                                />
+                              </div>
+
+                              <div>
+                                <Label className="mb-3 block">Preços por Quantidade</Label>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                  {[1, 2, 3, 4, 5, 6].map((bracket) => (
+                                    <div
+                                      key={bracket}
+                                      className="p-3 border rounded-lg bg-muted/30"
+                                    >
+                                      <Label
+                                        htmlFor={`price-${index}-${bracket}`}
+                                        className="text-xs font-medium mb-1 block"
+                                      >
+                                        {bracket} {bracket === 1 ? "abadá" : "abadás"}
+                                      </Label>
+                                      <div className="flex items-center gap-1">
+                                        <span className="text-sm text-muted-foreground">R$</span>
+                                        <Input
+                                          id={`price-${index}-${bracket}`}
+                                          type="number"
+                                          min="0"
+                                          step="0.01"
+                                          value={
+                                            product[
+                                              `price_bracket_${bracket}` as keyof Product
+                                            ]
+                                          }
+                                          onChange={(e) =>
+                                            updateProduct(
+                                              index,
+                                              `price_bracket_${bracket}` as keyof Product,
+                                              e.target.value
+                                            )
+                                          }
+                                          placeholder="0.00"
+                                          className="h-8"
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })}
+                    </TabsContent>
+                  ))}
+                </Tabs>
+              </>
+            ) : (
+              <Card className="p-12">
+                <div className="text-center text-muted-foreground">
+                  <Package className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg">Selecione um lote para gerenciar os produtos</p>
+                </div>
+              </Card>
+            )}
+          </div>
         </div>
       </main>
     </div>
