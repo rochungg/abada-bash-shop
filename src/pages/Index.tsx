@@ -82,6 +82,26 @@ const Index = () => {
     return products.find((p) => p.day === day && p.gender === gender);
   };
 
+  const getSelectedProducts = () => {
+    const selected: Array<{ product: Product; gender: string }> = [];
+    
+    Object.entries(selectedMale).forEach(([day, isSelected]) => {
+      if (isSelected) {
+        const product = getProduct(parseInt(day), "M");
+        if (product) selected.push({ product, gender: "M" });
+      }
+    });
+    
+    Object.entries(selectedFemale).forEach(([day, isSelected]) => {
+      if (isSelected) {
+        const product = getProduct(parseInt(day), "F");
+        if (product) selected.push({ product, gender: "F" });
+      }
+    });
+    
+    return selected;
+  };
+
   const calculateTotals = () => {
     const maleCount = Object.values(selectedMale).filter(Boolean).length;
     const femaleCount = Object.values(selectedFemale).filter(Boolean).length;
@@ -129,6 +149,7 @@ const Index = () => {
   };
 
   const totals = calculateTotals();
+  const selectedProducts = getSelectedProducts();
 
   const handleCheckboxChange = (day: number, gender: string, checked: boolean) => {
     if (gender === "M") {
@@ -155,7 +176,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/10 to-accent/5">
+    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/10 to-accent/5 pb-24 md:pb-0">
       <header className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-10 shadow-sm">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
@@ -169,6 +190,28 @@ const Index = () => {
           </Link>
         </div>
       </header>
+
+      {/* Mobile sticky bottom bar */}
+      {totals.total > 0 && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t shadow-lg z-20 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Total da compra</p>
+              <p className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+                R$ {totals.total.toFixed(2)}
+              </p>
+            </div>
+            <Button 
+              onClick={handleCheckout} 
+              size="lg"
+              className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity"
+            >
+              <ShoppingCart className="mr-2 h-5 w-5" />
+              Finalizar
+            </Button>
+          </div>
+        </div>
+      )}
 
       <main className="container mx-auto px-4 py-8 md:py-12">
         <div className="text-center mb-8 md:mb-12 animate-fade-in">
@@ -328,36 +371,67 @@ const Index = () => {
             </div>
 
             <div className="space-y-4">
-              {totals.maleCount > 0 && (
-                <div className="p-4 rounded-xl bg-gradient-to-br from-masculine/5 to-masculine/10 border border-masculine/20 shadow-sm">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-semibold text-masculine">Masculino</span>
-                    <Badge variant="outline" className="border-masculine text-masculine">
-                      {totals.maleCount} {totals.maleCount === 1 ? "abadá" : "abadás"}
-                    </Badge>
+              {totals.total === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                    <ShoppingCart className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <p className="text-2xl font-bold text-masculine">
-                    R$ {totals.maleTotal.toFixed(2)}
+                  <p className="text-muted-foreground">
+                    Selecione os dias desejados<br />para ver o preço
                   </p>
                 </div>
-              )}
-
-              {totals.femaleCount > 0 && (
-                <div className="p-4 rounded-xl bg-gradient-to-br from-feminine/5 to-feminine/10 border border-feminine/20 shadow-sm">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="font-semibold text-feminine">Feminino</span>
-                    <Badge variant="outline" className="border-feminine text-feminine">
-                      {totals.femaleCount} {totals.femaleCount === 1 ? "abadá" : "abadás"}
-                    </Badge>
-                  </div>
-                  <p className="text-2xl font-bold text-feminine">
-                    R$ {totals.femaleTotal.toFixed(2)}
-                  </p>
-                </div>
-              )}
-
-              {totals.total > 0 && (
+              ) : (
                 <>
+                  {/* Lista de produtos selecionados */}
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-semibold text-muted-foreground mb-3">Itens Selecionados</h4>
+                    {selectedProducts.map(({ product, gender }) => (
+                      <div 
+                        key={product.id} 
+                        className={`flex justify-between items-center p-3 rounded-lg text-sm transition-colors ${
+                          gender === "M" 
+                            ? "bg-masculine/5 border border-masculine/20" 
+                            : "bg-feminine/5 border border-feminine/20"
+                        }`}
+                      >
+                        <span className={`flex-1 font-medium ${gender === "M" ? "text-masculine" : "text-feminine"}`}>
+                          {product.name || `Dia ${product.day} - ${gender === "M" ? "Masculino" : "Feminino"}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Totais por gênero */}
+                  <div className="space-y-3 pt-3 border-t">
+                    {totals.maleCount > 0 && (
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-masculine/5 to-masculine/10 border border-masculine/20 shadow-sm">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-semibold text-masculine">Masculino</span>
+                          <Badge variant="outline" className="border-masculine text-masculine">
+                            {totals.maleCount} {totals.maleCount === 1 ? "abadá" : "abadás"}
+                          </Badge>
+                        </div>
+                        <p className="text-2xl font-bold text-masculine">
+                          R$ {totals.maleTotal.toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+                    {totals.femaleCount > 0 && (
+                      <div className="p-4 rounded-xl bg-gradient-to-br from-feminine/5 to-feminine/10 border border-feminine/20 shadow-sm">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="font-semibold text-feminine">Feminino</span>
+                          <Badge variant="outline" className="border-feminine text-feminine">
+                            {totals.femaleCount} {totals.femaleCount === 1 ? "abadá" : "abadás"}
+                          </Badge>
+                        </div>
+                        <p className="text-2xl font-bold text-feminine">
+                          R$ {totals.femaleTotal.toFixed(2)}
+                        </p>
+                      </div>
+                    )}
+                   </div>
+
+                  {/* Total e economia */}
                   <div className="border-t pt-4 space-y-4">
                     {totals.savings > 0 && (
                       <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
@@ -387,23 +461,12 @@ const Index = () => {
                   <Button
                     onClick={handleCheckout}
                     size="lg"
-                    className="w-full h-14 text-lg bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity shadow-lg"
+                    className="w-full h-14 text-lg bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity shadow-lg hidden md:flex"
                   >
                     <ShoppingCart className="mr-2 h-5 w-5" />
                     Finalizar Compra
                   </Button>
                 </>
-              )}
-
-              {totals.total === 0 && (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
-                    <ShoppingCart className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                  <p className="text-muted-foreground">
-                    Selecione os dias desejados<br />para ver o preço
-                  </p>
-                </div>
               )}
             </div>
 
