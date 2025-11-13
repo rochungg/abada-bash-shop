@@ -38,9 +38,32 @@ const Index = () => {
   }, []);
 
   const fetchProducts = async () => {
+    // Fetch active batch first
+    const { data: activeBatch, error: batchError } = await supabase
+      .from("batches")
+      .select("id")
+      .eq("active", true)
+      .maybeSingle();
+
+    if (batchError) {
+      toast({
+        title: "Erro ao carregar lote ativo",
+        description: batchError.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!activeBatch) {
+      setProducts([]);
+      return;
+    }
+
+    // Fetch products from active batch
     const { data, error } = await supabase
       .from("products")
       .select("*")
+      .eq("batch_id", activeBatch.id)
       .order("day", { ascending: true });
 
     if (error) {
