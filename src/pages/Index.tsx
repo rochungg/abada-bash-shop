@@ -12,7 +12,8 @@ interface Product {
   id: string;
   day: number;
   gender: string;
-  description?: string;
+  name?: string | null;
+  description?: string | null;
   stock: number;
   price_bracket_1: number;
   price_bracket_2: number;
@@ -204,15 +205,12 @@ const Index = () => {
                           htmlFor={`male-${day}`}
                           className="cursor-pointer flex-1"
                         >
-                          <div className="font-bold text-lg mb-1">Dia {day}</div>
+                          <div className="font-bold text-lg mb-1">
+                            {product?.name || `Dia ${day} - Masculino`}
+                          </div>
                           {product?.description && (
                             <p className="text-sm text-muted-foreground line-clamp-2">
                               {product.description}
-                            </p>
-                          )}
-                          {!product?.description && (
-                            <p className="text-sm text-muted-foreground">
-                              Abadá do dia {day}
                             </p>
                           )}
                         </label>
@@ -272,15 +270,12 @@ const Index = () => {
                           htmlFor={`female-${day}`}
                           className="cursor-pointer flex-1"
                         >
-                          <div className="font-bold text-lg mb-1">Dia {day}</div>
+                          <div className="font-bold text-lg mb-1">
+                            {product?.name || `Dia ${day} - Feminino`}
+                          </div>
                           {product?.description && (
                             <p className="text-sm text-muted-foreground line-clamp-2">
                               {product.description}
-                            </p>
-                          )}
-                          {!product?.description && (
-                            <p className="text-sm text-muted-foreground">
-                              Abadá do dia {day}
                             </p>
                           )}
                         </label>
