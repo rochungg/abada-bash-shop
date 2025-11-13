@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { User } from "@supabase/supabase-js";
-import { ArrowLeft, Save, Plus, Package, Trash2 } from "lucide-react";
+import { ArrowLeft, Save, Plus, Package, Trash2, Eye, EyeOff } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
@@ -90,7 +90,13 @@ const Admin = () => {
     }
 
     setBatches(data || []);
-    if (data && data.length > 0 && !selectedBatch) {
+    
+    // Select active batch if exists
+    const activeBatch = data?.find(b => b.active);
+    if (activeBatch && !selectedBatch) {
+      setSelectedBatch(activeBatch);
+      await fetchProducts(activeBatch.id);
+    } else if (data && data.length > 0 && !selectedBatch) {
       setSelectedBatch(data[0]);
       await fetchProducts(data[0].id);
     }
@@ -211,7 +217,7 @@ const Admin = () => {
       .insert({
         name: newBatchName,
         description: newBatchDescription || null,
-        active: true,
+        active: false,
       })
       .select()
       .single();
@@ -235,6 +241,31 @@ const Admin = () => {
     await fetchBatches();
     setSelectedBatch(data);
     await fetchProducts(data.id);
+  };
+
+  const toggleBatchActive = async (batchId: string, currentActive: boolean) => {
+    const { error } = await supabase
+      .from("batches")
+      .update({ active: !currentActive })
+      .eq("id", batchId);
+
+    if (error) {
+      toast({
+        title: "Erro ao atualizar lote",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: currentActive ? "Lote desativado" : "Lote ativado",
+      description: currentActive 
+        ? "O lote foi desativado" 
+        : "Este lote agora está ativo no e-commerce",
+    });
+
+    await fetchBatches();
   };
 
   const deleteBatch = async (batchId: string) => {
@@ -446,7 +477,7 @@ const Admin = () => {
                 {batches.map((batch) => (
                   <div
                     key={batch.id}
-                    className={`p-3 rounded-lg border-2 transition-all cursor-pointer ${
+                    className={`p-3 rounded-lg border-2 transition-all ${
                       selectedBatch?.id === batch.id
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-primary/50"
@@ -457,44 +488,73 @@ const Admin = () => {
                         setSelectedBatch(batch);
                         fetchProducts(batch.id);
                       }}
-                      className="flex-1"
+                      className="flex-1 cursor-pointer"
                     >
-                      <div className="font-semibold">{batch.name}</div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="font-semibold">{batch.name}</div>
+                        {batch.active && (
+                          <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-accent text-accent-foreground">
+                            Ativo
+                          </span>
+                        )}
+                      </div>
                       {batch.description && (
                         <p className="text-sm text-muted-foreground line-clamp-2">
                           {batch.description}
                         </p>
                       )}
                     </div>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="mt-2 w-full text-destructive hover:text-destructive"
-                        >
-                          <Trash2 className="h-3 w-3 mr-1" />
-                          Excluir
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tem certeza que deseja excluir o lote "{batch.name}"? Todos os produtos associados também serão excluídos. Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteBatch(batch.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    <div className="flex gap-1 mt-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleBatchActive(batch.id, batch.active);
+                        }}
+                        className="flex-1"
+                      >
+                        {batch.active ? (
+                          <>
+                            <EyeOff className="h-3 w-3 mr-1" />
+                            Desativar
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="h-3 w-3 mr-1" />
+                            Ativar
+                          </>
+                        )}
+                      </Button>
+                       <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-destructive hover:text-destructive"
                           >
-                            Excluir
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja excluir o lote "{batch.name}"? Todos os produtos associados também serão excluídos. Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteBatch(batch.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
                 ))}
 
