@@ -5,13 +5,14 @@ import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ShoppingCart, User } from "lucide-react";
+import { ShoppingCart, User, Sparkles, TrendingDown } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface Product {
   id: string;
   day: number;
   gender: string;
+  description?: string;
   stock: number;
   price_bracket_1: number;
   price_bracket_2: number;
@@ -64,7 +65,6 @@ const Index = () => {
     let maleTotal = 0;
     let femaleTotal = 0;
 
-    // Calculate male total
     Object.entries(selectedMale).forEach(([day, selected]) => {
       if (selected) {
         const product = getProduct(parseInt(day), "M");
@@ -75,7 +75,6 @@ const Index = () => {
       }
     });
 
-    // Calculate female total
     Object.entries(selectedFemale).forEach(([day, selected]) => {
       if (selected) {
         const product = getProduct(parseInt(day), "F");
@@ -132,23 +131,27 @@ const Index = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8 md:py-12">
-        <div className="text-center mb-8 md:mb-12">
+        <div className="text-center mb-8 md:mb-12 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-4">
+            <Sparkles className="h-4 w-4" />
+            <span className="text-sm font-semibold">Compre mais, pague menos!</span>
+          </div>
           <h2 className="text-3xl md:text-5xl font-bold mb-4 text-foreground">
             Escolha seus Dias
           </h2>
-          <p className="text-lg md:text-xl text-muted-foreground">
-            Quanto mais você compra, melhor o preço! 🎉
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto">
+            Selecione os abadás que deseja e aproveite nossos descontos progressivos 🎉
           </p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
           {/* Masculino */}
-          <Card className="p-6 shadow-card hover:shadow-hover transition-all duration-300">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-full bg-masculine/10 flex items-center justify-center">
-                <span className="text-2xl">👔</span>
+          <Card className="p-6 shadow-card hover:shadow-hover transition-all duration-300 animate-fade-in">
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-masculine to-masculine/60 flex items-center justify-center shadow-md">
+                <span className="text-3xl">👔</span>
               </div>
-              <div>
+              <div className="flex-1">
                 <h3 className="text-2xl font-bold text-masculine">Masculino</h3>
                 <p className="text-sm text-muted-foreground">
                   {totals.maleCount} {totals.maleCount === 1 ? "dia" : "dias"} selecionado(s)
@@ -164,33 +167,51 @@ const Index = () => {
                 return (
                   <div
                     key={day}
-                    className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
+                    className={`group relative overflow-hidden rounded-xl border-2 transition-all duration-300 ${
                       selectedMale[day]
-                        ? "border-masculine bg-masculine/5"
-                        : "border-border hover:border-masculine/50"
+                        ? "border-masculine bg-masculine/5 shadow-md scale-[1.02]"
+                        : "border-border hover:border-masculine/50 hover:bg-masculine/5"
                     } ${!isAvailable ? "opacity-50" : ""}`}
                   >
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        id={`male-${day}`}
-                        checked={selectedMale[day] || false}
-                        onCheckedChange={(checked) =>
-                          handleCheckboxChange(day, "M", checked as boolean)
-                        }
-                        disabled={!isAvailable}
-                      />
-                      <label
-                        htmlFor={`male-${day}`}
-                        className="font-medium cursor-pointer"
-                      >
-                        Dia {day}
-                      </label>
+                    <div className="flex items-start justify-between p-4">
+                      <div className="flex items-start gap-3 flex-1">
+                        <Checkbox
+                          id={`male-${day}`}
+                          checked={selectedMale[day] || false}
+                          onCheckedChange={(checked) =>
+                            handleCheckboxChange(day, "M", checked as boolean)
+                          }
+                          disabled={!isAvailable}
+                          className="mt-1"
+                        />
+                        <label
+                          htmlFor={`male-${day}`}
+                          className="cursor-pointer flex-1"
+                        >
+                          <div className="font-bold text-lg mb-1">Dia {day}</div>
+                          {product?.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {product.description}
+                            </p>
+                          )}
+                          {!product?.description && (
+                            <p className="text-sm text-muted-foreground">
+                              Abadá do dia {day}
+                            </p>
+                          )}
+                        </label>
+                      </div>
+                      {!isAvailable && (
+                        <Badge variant="destructive" className="text-xs shrink-0">
+                          Esgotado
+                        </Badge>
+                      )}
+                      {isAvailable && product && (
+                        <Badge variant="outline" className="text-xs shrink-0 border-masculine/30 text-masculine">
+                          {product.stock} unidades
+                        </Badge>
+                      )}
                     </div>
-                    {!isAvailable && (
-                      <Badge variant="destructive" className="text-xs">
-                        Esgotado
-                      </Badge>
-                    )}
                   </div>
                 );
               })}
@@ -198,12 +219,12 @@ const Index = () => {
           </Card>
 
           {/* Feminino */}
-          <Card className="p-6 shadow-card hover:shadow-hover transition-all duration-300">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-full bg-feminine/10 flex items-center justify-center">
-                <span className="text-2xl">👗</span>
+          <Card className="p-6 shadow-card hover:shadow-hover transition-all duration-300 animate-fade-in" style={{ animationDelay: "100ms" }}>
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-feminine to-feminine/60 flex items-center justify-center shadow-md">
+                <span className="text-3xl">👗</span>
               </div>
-              <div>
+              <div className="flex-1">
                 <h3 className="text-2xl font-bold text-feminine">Feminino</h3>
                 <p className="text-sm text-muted-foreground">
                   {totals.femaleCount} {totals.femaleCount === 1 ? "dia" : "dias"} selecionado(s)
@@ -219,33 +240,51 @@ const Index = () => {
                 return (
                   <div
                     key={day}
-                    className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
+                    className={`group relative overflow-hidden rounded-xl border-2 transition-all duration-300 ${
                       selectedFemale[day]
-                        ? "border-feminine bg-feminine/5"
-                        : "border-border hover:border-feminine/50"
+                        ? "border-feminine bg-feminine/5 shadow-md scale-[1.02]"
+                        : "border-border hover:border-feminine/50 hover:bg-feminine/5"
                     } ${!isAvailable ? "opacity-50" : ""}`}
                   >
-                    <div className="flex items-center gap-3">
-                      <Checkbox
-                        id={`female-${day}`}
-                        checked={selectedFemale[day] || false}
-                        onCheckedChange={(checked) =>
-                          handleCheckboxChange(day, "F", checked as boolean)
-                        }
-                        disabled={!isAvailable}
-                      />
-                      <label
-                        htmlFor={`female-${day}`}
-                        className="font-medium cursor-pointer"
-                      >
-                        Dia {day}
-                      </label>
+                    <div className="flex items-start justify-between p-4">
+                      <div className="flex items-start gap-3 flex-1">
+                        <Checkbox
+                          id={`female-${day}`}
+                          checked={selectedFemale[day] || false}
+                          onCheckedChange={(checked) =>
+                            handleCheckboxChange(day, "F", checked as boolean)
+                          }
+                          disabled={!isAvailable}
+                          className="mt-1"
+                        />
+                        <label
+                          htmlFor={`female-${day}`}
+                          className="cursor-pointer flex-1"
+                        >
+                          <div className="font-bold text-lg mb-1">Dia {day}</div>
+                          {product?.description && (
+                            <p className="text-sm text-muted-foreground line-clamp-2">
+                              {product.description}
+                            </p>
+                          )}
+                          {!product?.description && (
+                            <p className="text-sm text-muted-foreground">
+                              Abadá do dia {day}
+                            </p>
+                          )}
+                        </label>
+                      </div>
+                      {!isAvailable && (
+                        <Badge variant="destructive" className="text-xs shrink-0">
+                          Esgotado
+                        </Badge>
+                      )}
+                      {isAvailable && product && (
+                        <Badge variant="outline" className="text-xs shrink-0 border-feminine/30 text-feminine">
+                          {product.stock} unidades
+                        </Badge>
+                      )}
                     </div>
-                    {!isAvailable && (
-                      <Badge variant="destructive" className="text-xs">
-                        Esgotado
-                      </Badge>
-                    )}
                   </div>
                 );
               })}
@@ -253,19 +292,22 @@ const Index = () => {
           </Card>
 
           {/* Resumo */}
-          <Card className="p-6 shadow-card lg:sticky lg:top-24 h-fit">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <ShoppingCart className="h-6 w-6 text-primary" />
+          <Card className="p-6 shadow-card lg:sticky lg:top-24 h-fit animate-fade-in" style={{ animationDelay: "200ms" }}>
+            <div className="flex items-center gap-3 mb-6 pb-4 border-b">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-md">
+                <ShoppingCart className="h-7 w-7 text-white" />
               </div>
-              <h3 className="text-2xl font-bold">Resumo</h3>
+              <div className="flex-1">
+                <h3 className="text-2xl font-bold">Seu Carrinho</h3>
+                <p className="text-sm text-muted-foreground">Resumo da compra</p>
+              </div>
             </div>
 
             <div className="space-y-4">
               {totals.maleCount > 0 && (
-                <div className="p-4 rounded-lg bg-masculine/5 border border-masculine/20">
+                <div className="p-4 rounded-xl bg-gradient-to-br from-masculine/5 to-masculine/10 border border-masculine/20 shadow-sm">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium text-masculine">Masculino</span>
+                    <span className="font-semibold text-masculine">Masculino</span>
                     <Badge variant="outline" className="border-masculine text-masculine">
                       {totals.maleCount} {totals.maleCount === 1 ? "abadá" : "abadás"}
                     </Badge>
@@ -277,9 +319,9 @@ const Index = () => {
               )}
 
               {totals.femaleCount > 0 && (
-                <div className="p-4 rounded-lg bg-feminine/5 border border-feminine/20">
+                <div className="p-4 rounded-xl bg-gradient-to-br from-feminine/5 to-feminine/10 border border-feminine/20 shadow-sm">
                   <div className="flex justify-between items-center mb-2">
-                    <span className="font-medium text-feminine">Feminino</span>
+                    <span className="font-semibold text-feminine">Feminino</span>
                     <Badge variant="outline" className="border-feminine text-feminine">
                       {totals.femaleCount} {totals.femaleCount === 1 ? "abadá" : "abadás"}
                     </Badge>
@@ -293,9 +335,9 @@ const Index = () => {
               {totals.total > 0 && (
                 <>
                   <div className="border-t pt-4">
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex justify-between items-center mb-6">
                       <span className="text-lg font-bold">Total</span>
-                      <span className="text-3xl font-bold text-primary">
+                      <span className="text-4xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                         R$ {totals.total.toFixed(2)}
                       </span>
                     </div>
@@ -304,24 +346,33 @@ const Index = () => {
                   <Button
                     onClick={handleCheckout}
                     size="lg"
-                    className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity"
+                    className="w-full h-14 text-lg bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity shadow-lg"
                   >
+                    <ShoppingCart className="mr-2 h-5 w-5" />
                     Finalizar Compra
                   </Button>
                 </>
               )}
 
               {totals.total === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>Selecione os dias desejados para ver o preço</p>
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 rounded-full bg-muted mx-auto mb-4 flex items-center justify-center">
+                    <ShoppingCart className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <p className="text-muted-foreground">
+                    Selecione os dias desejados<br />para ver o preço
+                  </p>
                 </div>
               )}
             </div>
 
-            <div className="mt-6 p-4 rounded-lg bg-secondary/10 border border-secondary/20">
-              <p className="text-xs text-center text-muted-foreground">
-                💡 Dica: Quanto mais abadás você compra, menor o preço por unidade!
-              </p>
+            <div className="mt-6 p-4 rounded-xl bg-gradient-to-r from-secondary/10 to-primary/10 border border-secondary/20">
+              <div className="flex items-start gap-3">
+                <TrendingDown className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                <p className="text-sm text-foreground font-medium">
+                  <strong>Desconto progressivo:</strong> Quanto mais abadás você compra do mesmo gênero, menor o preço unitário!
+                </p>
+              </div>
             </div>
           </Card>
         </div>
