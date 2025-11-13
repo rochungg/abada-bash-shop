@@ -155,10 +155,10 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10 pb-24 md:pb-0">
-      <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <h1 className="text-xl md:text-2xl font-bold text-foreground">
+    <div className="min-h-screen bg-background pb-24 md:pb-0">
+      <header className="border-b bg-card backdrop-blur-sm sticky top-0 z-10 shadow-sm">
+        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 className="text-xl md:text-2xl font-bold text-primary">
             Abadás 2025
           </h1>
           <Link to="/admin">
@@ -171,18 +171,18 @@ const Index = () => {
 
       {/* Mobile sticky bottom bar */}
       {totals.total > 0 && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-sm border-t shadow-lg z-20 p-4">
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-card border-t shadow-lg z-20 p-4">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-xs text-muted-foreground">Total da compra</p>
-              <p className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+              <p className="text-2xl font-bold text-primary">
                 R$ {totals.total.toFixed(2)}
               </p>
             </div>
             <Button 
               onClick={handleCheckout} 
               size="lg"
-              className="bg-gradient-to-r from-primary to-secondary hover:opacity-90 transition-opacity"
+              className="shrink-0"
             >
               <ShoppingCart className="mr-2 h-5 w-5" />
               Finalizar
@@ -191,27 +191,29 @@ const Index = () => {
         </div>
       )}
 
-      <main className="container mx-auto px-4 py-6 md:py-10">
-        <div className="text-center mb-6 md:mb-10 animate-fade-in">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary mb-3">
+      <main className="container mx-auto px-4 py-8 md:py-12">
+        <div className="text-center mb-8 md:mb-12 animate-fade-in">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary mb-4">
             <Sparkles className="h-4 w-4" />
-            <span className="text-xs font-semibold">Compre mais, pague menos</span>
+            <span className="text-sm font-medium">Compre mais, pague menos</span>
           </div>
-          <h2 className="text-2xl md:text-4xl font-bold mb-2 text-foreground">
+          <h2 className="text-3xl md:text-4xl font-bold mb-3 text-foreground">
             Escolha seus Dias
           </h2>
-          <p className="text-sm md:text-base text-muted-foreground max-w-xl mx-auto">
+          <p className="text-base text-muted-foreground max-w-2xl mx-auto">
             Selecione os abadás desejados e aproveite nossos descontos progressivos
           </p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-6 max-w-7xl mx-auto">
           {/* Masculino */}
-          <Card className="p-5 shadow-card hover:shadow-hover transition-all duration-300 animate-fade-in">
-            <div className="flex items-center justify-between mb-4 pb-3 border-b">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">👔</span>
-                <h3 className="text-xl font-bold text-masculine">Masculino</h3>
+          <Card className="p-6 shadow-sm border-border/50 hover:shadow-md transition-all duration-300 animate-fade-in">
+            <div className="flex items-center justify-between mb-5 pb-4 border-b border-border/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-masculine/10 flex items-center justify-center">
+                  <span className="text-xl">👔</span>
+                </div>
+                <h3 className="text-lg font-semibold text-foreground">Masculino</h3>
               </div>
               {totals.maleCount > 0 && (
                 <Badge variant="secondary" className="text-xs">
@@ -220,7 +222,7 @@ const Index = () => {
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               {[1, 2, 3, 4, 5, 6].map((day) => {
                 const product = getProduct(day, "M");
                 const isAvailable = product && product.stock > 0;
@@ -230,8 +232,8 @@ const Index = () => {
                     key={day}
                     className={`group rounded-lg border transition-all duration-200 ${
                       selectedMale[day]
-                        ? "border-masculine bg-masculine/5"
-                        : "border-border hover:border-masculine/30"
+                        ? "border-masculine bg-masculine/5 shadow-sm"
+                        : "border-border/50 hover:border-masculine/40 hover:bg-muted/30"
                     } ${!isAvailable ? "opacity-50" : ""}`}
                   >
                     <div className="flex items-center gap-3 p-3">
@@ -269,11 +271,13 @@ const Index = () => {
           </Card>
 
           {/* Feminino */}
-          <Card className="p-5 shadow-card hover:shadow-hover transition-all duration-300 animate-fade-in" style={{ animationDelay: "100ms" }}>
-            <div className="flex items-center justify-between mb-4 pb-3 border-b">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">👗</span>
-                <h3 className="text-xl font-bold text-feminine">Feminino</h3>
+          <Card className="p-6 shadow-sm border-border/50 hover:shadow-md transition-all duration-300 animate-fade-in" style={{ animationDelay: "100ms" }}>
+            <div className="flex items-center justify-between mb-5 pb-4 border-b border-border/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-feminine/10 flex items-center justify-center">
+                  <span className="text-xl">👗</span>
+                </div>
+                <h3 className="text-lg font-semibold text-foreground">Feminino</h3>
               </div>
               {totals.femaleCount > 0 && (
                 <Badge variant="secondary" className="text-xs">
@@ -282,7 +286,7 @@ const Index = () => {
               )}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-3">
               {[1, 2, 3, 4, 5, 6].map((day) => {
                 const product = getProduct(day, "F");
                 const isAvailable = product && product.stock > 0;
@@ -292,8 +296,8 @@ const Index = () => {
                     key={day}
                     className={`group rounded-lg border transition-all duration-200 ${
                       selectedFemale[day]
-                        ? "border-feminine bg-feminine/5"
-                        : "border-border hover:border-feminine/30"
+                        ? "border-feminine bg-feminine/5 shadow-sm"
+                        : "border-border/50 hover:border-feminine/40 hover:bg-muted/30"
                     } ${!isAvailable ? "opacity-50" : ""}`}
                   >
                     <div className="flex items-center gap-3 p-3">
@@ -331,37 +335,39 @@ const Index = () => {
           </Card>
 
           {/* Resumo */}
-          <Card className="p-5 shadow-card lg:sticky lg:top-24 h-fit animate-fade-in" style={{ animationDelay: "200ms" }}>
-            <div className="flex items-center gap-2 mb-4">
+          <Card className="p-6 shadow-sm border-border/50 lg:sticky lg:top-24 h-fit animate-fade-in" style={{ animationDelay: "200ms" }}>
+            <div className="flex items-center gap-2 mb-5 pb-4 border-b border-border/50">
               <ShoppingCart className="h-5 w-5 text-primary" />
-              <h3 className="text-lg font-bold">Carrinho</h3>
+              <h3 className="text-lg font-semibold">Seu Carrinho</h3>
             </div>
 
             {totals.total === 0 ? (
-              <div className="text-center py-8">
-                <ShoppingCart className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+              <div className="text-center py-10">
+                <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                  <ShoppingCart className="h-8 w-8 text-muted-foreground/50" />
+                </div>
                 <p className="text-sm text-muted-foreground">Nenhum item selecionado</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {/* Resumo compacto */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {totals.maleCount > 0 && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">
-                        {totals.maleCount} Masculino
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">
+                        {totals.maleCount} {totals.maleCount === 1 ? 'abadá' : 'abadás'} masculino
                       </span>
-                      <span className="font-semibold text-masculine">
+                      <span className="font-semibold text-foreground">
                         R$ {totals.maleTotal.toFixed(2)}
                       </span>
                     </div>
                   )}
                   {totals.femaleCount > 0 && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-muted-foreground">
-                        {totals.femaleCount} Feminino
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">
+                        {totals.femaleCount} {totals.femaleCount === 1 ? 'abadá' : 'abadás'} feminino
                       </span>
-                      <span className="font-semibold text-feminine">
+                      <span className="font-semibold text-foreground">
                         R$ {totals.femaleTotal.toFixed(2)}
                       </span>
                     </div>
@@ -369,15 +375,15 @@ const Index = () => {
                 </div>
 
                 {/* Total */}
-                <div className="border-t pt-4">
+                <div className="border-t border-border/50 pt-4 space-y-2">
                   {totals.savings > 0 && (
-                    <div className="flex justify-between items-center text-xs text-muted-foreground mb-2">
-                      <span>Economia</span>
-                      <span className="text-accent font-medium">- R$ {totals.savings.toFixed(2)}</span>
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-muted-foreground">Economia</span>
+                      <span className="text-green-600 font-medium">- R$ {totals.savings.toFixed(2)}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center">
-                    <span className="font-semibold">Total</span>
+                    <span className="text-base font-semibold text-foreground">Total</span>
                     <span className="text-2xl font-bold text-primary">
                       R$ {totals.total.toFixed(2)}
                     </span>
@@ -395,11 +401,11 @@ const Index = () => {
               </div>
             )}
 
-            <div className="mt-4 p-3 rounded-lg bg-muted/30 border border-border/50">
-              <div className="flex items-start gap-2">
-                <TrendingDown className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                <p className="text-xs text-muted-foreground">
-                  <strong className="text-foreground">Desconto progressivo:</strong> Quanto mais abadás do mesmo gênero, menor o preço unitário
+            <div className="mt-5 p-4 rounded-lg bg-primary/5 border border-primary/10">
+              <div className="flex items-start gap-3">
+                <TrendingDown className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  <strong className="text-foreground font-medium">Desconto progressivo:</strong> Quanto mais abadás do mesmo gênero você comprar, menor será o preço unitário
                 </p>
               </div>
             </div>
