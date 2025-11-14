@@ -83,9 +83,13 @@ const Index = () => {
   };
 
   const calculateTotals = () => {
-    // Count different days selected (not total quantity)
-    const maleDifferentDays = Object.values(selectedMale).filter(qty => qty > 0).length;
-    const femaleDifferentDays = Object.values(selectedFemale).filter(qty => qty > 0).length;
+    // Layer 1: Count different days with at least one item
+    const maleDaysWithAtLeastOne = Object.values(selectedMale).filter(qty => qty >= 1).length;
+    const femaleDaysWithAtLeastOne = Object.values(selectedFemale).filter(qty => qty >= 1).length;
+    
+    // Layer 2: Count different days with exactly two items
+    const maleDaysWithTwo = Object.values(selectedMale).filter(qty => qty === 2).length;
+    const femaleDaysWithTwo = Object.values(selectedFemale).filter(qty => qty === 2).length;
     
     // Count total abadás
     const maleTotalAbadas = Object.values(selectedMale).reduce((sum, qty) => sum + qty, 0);
@@ -96,41 +100,41 @@ const Index = () => {
     let maleTotalWithoutDiscount = 0;
     let femaleTotalWithoutDiscount = 0;
 
-    // Calculate male total
+    // Calculate male total with two independent layers
     Object.entries(selectedMale).forEach(([day, quantity]) => {
       if (quantity > 0) {
         const product = getProduct(parseInt(day), "M");
         if (product) {
-          const bracket = `price_bracket_${maleDifferentDays}` as keyof Product;
+          // Layer 1: First abadá uses bracket based on days with at least one item
+          const bracket1Key = `price_bracket_${maleDaysWithAtLeastOne}` as keyof Product;
+          maleTotal += Number(product[bracket1Key]);
+          maleTotalWithoutDiscount += Number(product.price_bracket_1);
           
-          if (quantity === 1) {
-            // Only one abadá: apply bracket based on different days
-            maleTotal += Number(product[bracket]);
+          // Layer 2: Second abadá uses bracket based on days with two items
+          if (quantity === 2) {
+            const bracket2Key = `price_bracket_${maleDaysWithTwo}` as keyof Product;
+            maleTotal += Number(product[bracket2Key]);
             maleTotalWithoutDiscount += Number(product.price_bracket_1);
-          } else if (quantity === 2) {
-            // Two abadás: first at bracket_1, second at bracket based on different days
-            maleTotal += Number(product.price_bracket_1) + Number(product[bracket]);
-            maleTotalWithoutDiscount += Number(product.price_bracket_1) * 2;
           }
         }
       }
     });
 
-    // Calculate female total
+    // Calculate female total with two independent layers
     Object.entries(selectedFemale).forEach(([day, quantity]) => {
       if (quantity > 0) {
         const product = getProduct(parseInt(day), "F");
         if (product) {
-          const bracket = `price_bracket_${femaleDifferentDays}` as keyof Product;
+          // Layer 1: First abadá uses bracket based on days with at least one item
+          const bracket1Key = `price_bracket_${femaleDaysWithAtLeastOne}` as keyof Product;
+          femaleTotal += Number(product[bracket1Key]);
+          femaleTotalWithoutDiscount += Number(product.price_bracket_1);
           
-          if (quantity === 1) {
-            // Only one abadá: apply bracket based on different days
-            femaleTotal += Number(product[bracket]);
+          // Layer 2: Second abadá uses bracket based on days with two items
+          if (quantity === 2) {
+            const bracket2Key = `price_bracket_${femaleDaysWithTwo}` as keyof Product;
+            femaleTotal += Number(product[bracket2Key]);
             femaleTotalWithoutDiscount += Number(product.price_bracket_1);
-          } else if (quantity === 2) {
-            // Two abadás: first at bracket_1, second at bracket based on different days
-            femaleTotal += Number(product.price_bracket_1) + Number(product[bracket]);
-            femaleTotalWithoutDiscount += Number(product.price_bracket_1) * 2;
           }
         }
       }
@@ -141,8 +145,8 @@ const Index = () => {
     const savings = totalWithoutDiscount - total;
 
     return { 
-      maleDifferentDays,
-      femaleDifferentDays,
+      maleDifferentDays: maleDaysWithAtLeastOne,
+      femaleDifferentDays: femaleDaysWithAtLeastOne,
       maleTotalAbadas,
       femaleTotalAbadas,
       maleTotal, 
